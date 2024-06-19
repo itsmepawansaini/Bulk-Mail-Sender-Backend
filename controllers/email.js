@@ -2,12 +2,13 @@ const nodemailer = require("nodemailer");
 const Email = require("../models/Email");
 
 exports.sendEmail = async (req, res) => {
-  const { to, subject, body } = req.body;
+  const { fromName, fromId, replyto, to, subject, body } = req.body;
 
   const recipientsArray = to.split(",").map((email) => email.trim());
-  console.log(recipientsArray);
 
   try {
+    const { name, email } = req.user;
+
     let transporter = nodemailer.createTransport({
       host: process.env.SMTP_SERVER,
       port: process.env.SMTP_PORT,
@@ -18,32 +19,32 @@ exports.sendEmail = async (req, res) => {
       },
     });
 
-    const from = '"Pawan Saini" <pawan.artistonk@gmail.com>';
-
     let mailOptions = {
-      from,
+      from: `"${fromName}" <${fromId}>`,
       bcc: recipientsArray,
       subject,
       text: body,
-      replyTo: "hr@artistonk.com",
+      replyTo: replyto,
     };
 
     await transporter.sendMail(mailOptions);
 
     await Email.create({
-      from,
+      fromName: fromName,
+      fromId: fromId,
       to: recipientsArray,
       subject,
       body,
     });
 
-    console.log(`Email Sent Successfully To All Recipients`);
-    res.send(`Email Sent Successfully To All Recipients`);
+    console.log(`Email Sent Successfully To`,recipientsArray.length);
+    res.send(`Sent Successfully`);
   } catch (error) {
     console.error("Error Sending Email:", error.message);
     res.status(500).send(`Error Sending Email: ${error.message}`);
   }
 };
+
 
 
 exports.getSentEmails = async (req, res) => {
