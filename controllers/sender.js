@@ -16,8 +16,6 @@ exports.addSender = async (req, res) => {
       email,
     });
 
-    // await Sender.save();
-
     res.send(`Sender Added`);
   } catch (err) {
     console.error(err.message);
@@ -27,8 +25,31 @@ exports.addSender = async (req, res) => {
 
 exports.getSender = async (req, res) => {
   try {
-    const senders = await Sender.find().sort({ sentAt: -1 });
-    res.json(senders);
+    let { search, count, page } = req.query;
+    count = parseInt(count) || 10;
+    page = parseInt(page) || 1;
+
+    const queryConditions = {};
+    if (search) {
+      queryConditions.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const totalCount = await Sender.countDocuments(queryConditions);
+
+    const senders = await Sender.find(queryConditions)
+      .sort({ sentAt: -1 })
+      .skip((page - 1) * count)
+      .limit(count);
+
+    res.json({
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / count),
+      senders,
+    });
   } catch (error) {
     console.error("Error Fetching Sender:", error.message);
     res.status(500).send(`Error Fetching Sender: ${error.message}`);

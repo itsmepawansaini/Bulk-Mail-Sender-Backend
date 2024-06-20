@@ -25,10 +25,33 @@ exports.addRecipient = async (req, res) => {
 
 exports.getRecipient = async (req, res) => {
   try {
-    const recipients = await Recipient.find().sort({ sentAt: -1 });
-    res.json(recipients);
+    let { search, count, page } = req.query;
+    count = parseInt(count) || 10;
+
+    const queryConditions = {};
+    if (search) {
+      queryConditions.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const totalCount = await Recipient.countDocuments(queryConditions);
+
+    const recipients = await Recipient.find(queryConditions)
+      .sort({ sentAt: -1 })
+      .skip((page - 1) * count)
+      .limit(count);
+
+    res.json({
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / count),
+      recipients
+    });
   } catch (error) {
     console.error("Error Fetching Recipient:", error.message);
     res.status(500).send(`Error Fetching Recipient: ${error.message}`);
   }
 };
+

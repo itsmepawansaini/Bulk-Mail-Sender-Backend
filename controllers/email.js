@@ -45,17 +45,40 @@ exports.sendEmail = async (req, res) => {
   }
 };
 
-
-
 exports.getSentEmails = async (req, res) => {
   try {
-    const emails = await Email.find().sort({ sentAt: -1 });
-    res.json(emails);
+    let { search, count, page } = req.query;
+    count = parseInt(count) || 10;
+    page = parseInt(page) || 1;
+
+    const queryConditions = {};
+    if (search) {
+      queryConditions.$or = [
+        { fromName: { $regex: search, $options: 'i' } }, 
+        { fromId: { $regex: search, $options: 'i' } }, 
+        { subject: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const totalCount = await Email.countDocuments(queryConditions);
+
+    const emails = await Email.find(queryConditions)
+      .sort({ sentAt: -1 })
+      .skip((page - 1) * count)
+      .limit(count);
+
+    res.json({
+      totalCount,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / count),
+      emails
+    });
   } catch (error) {
     console.error("Error Fetching Emails:", error.message);
     res.status(500).send(`Error Fetching Emails: ${error.message}`);
   }
 };
+
 
 
 
