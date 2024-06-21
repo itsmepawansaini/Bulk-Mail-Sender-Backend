@@ -27,6 +27,7 @@ exports.getRecipient = async (req, res) => {
   try {
     let { search, count, page } = req.query;
     count = parseInt(count) || 10;
+    page = parseInt(page) || 1;
 
     const queryConditions = {};
     if (search) {
@@ -39,7 +40,7 @@ exports.getRecipient = async (req, res) => {
     const totalCount = await Recipient.countDocuments(queryConditions);
 
     const recipients = await Recipient.find(queryConditions)
-      .sort({ sentAt: -1 })
+      .sort({ createdAt: 1 })
       .skip((page - 1) * count)
       .limit(count);
 
@@ -54,4 +55,5 @@ exports.getRecipient = async (req, res) => {
     res.status(500).send(`Error Fetching Recipient: ${error.message}`);
   }
 };
+
 
