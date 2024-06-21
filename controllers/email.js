@@ -10,13 +10,13 @@ const transporter = nodemailer.createTransport({
   port: process.env.SMTP_PORT,
   secure: false,
   auth: {
-    user: process.env.EMAIL_ADDRESS ,
+    user: process.env.EMAIL_ADDRESS,
     pass: process.env.EMAIL_PASSWORD,
   },
 });
 
 exports.sendEmail = async (req, res) => {
-  upload.single('attachment')(req, res, async (err) => {
+  upload.single("attachment")(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       console.error("Multer error:", err);
       return res.status(500).send(`Error uploading file: ${err.message}`);
@@ -60,6 +60,7 @@ exports.sendEmail = async (req, res) => {
                 filename: req.file.originalname,
                 contentType: req.file.mimetype,
                 sizeInBytes: req.file.size,
+                content: req.file.buffer,
               },
             ]
           : [],
@@ -76,7 +77,6 @@ exports.sendEmail = async (req, res) => {
   });
 };
 
-
 exports.getSentEmails = async (req, res) => {
   try {
     let { search, count, page } = req.query;
@@ -86,15 +86,16 @@ exports.getSentEmails = async (req, res) => {
     const queryConditions = {};
     if (search) {
       queryConditions.$or = [
-        { fromName: { $regex: search, $options: 'i' } }, 
-        { fromId: { $regex: search, $options: 'i' } }, 
-        { subject: { $regex: search, $options: 'i' } }
+        { fromName: { $regex: search, $options: "i" } },
+        { fromId: { $regex: search, $options: "i" } },
+        { subject: { $regex: search, $options: "i" } },
       ];
     }
 
     const totalCount = await Email.countDocuments(queryConditions);
 
     const emails = await Email.find(queryConditions)
+      .select('-attachments') // Exclude attachments from the query
       .sort({ sentAt: -1 })
       .skip((page - 1) * count)
       .limit(count);
@@ -103,7 +104,7 @@ exports.getSentEmails = async (req, res) => {
       totalCount,
       currentPage: page,
       totalPages: Math.ceil(totalCount / count),
-      emails
+      emails,
     });
   } catch (error) {
     console.error("Error Fetching Emails:", error.message);
@@ -113,19 +114,27 @@ exports.getSentEmails = async (req, res) => {
 
 exports.getEmailById = async (req, res) => {
   const { emailId } = req.params;
+  const { includeAttachments } = req.query; // Get the query parameter
 
   try {
     const email = await Email.findById(emailId);
 
     if (!email) {
-      return res.status(404).send('Email not found');
+      return res.status(404).send('Email Not Found');
+    }
+
+    if (includeAttachments === 'true') {
+      const emailWithAttachments = email.toObject(); // Convert to plain object
+      emailWithAttachments.attachments = email.attachments.map(att => ({
+        ...att.toObject(),
+        content: att.content.toString('base64') // Convert buffer to base64 string
+      }));
+      return res.json(emailWithAttachments);
     }
 
     res.json(email);
   } catch (error) {
-    console.error('Error Fetching Email by ID:', error.message);
-    res.status(500).send(`Error Fetching Email by ID: ${error.message}`);
+    console.error('Error Fetching Email By ID:', error.message);
+    res.status(500).send(`Error Fetching Email By ID: ${error.message}`);
   }
 };
-
-

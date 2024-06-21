@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const RecipientSchema = new Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
+const RecipientSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  createdAt: { type: Date, default: Date.now },
+  group: { type: mongoose.Schema.Types.ObjectId, ref: 'RecipientGroup' }
 });
 
 module.exports = mongoose.model('Recipient', RecipientSchema);
