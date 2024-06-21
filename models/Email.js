@@ -7,6 +7,12 @@ const emailSchema = new Schema({
     to: [{ type: String, required: true }],
     subject: { type: String, required: true },
     body: { type: String, required: true },
+    attachments: [{
+        filename: { type: String, required: true },
+        contentType: { type: String },
+        sizeInBytes: { type: Number },
+        content: { type: Buffer }
+    }],
     sentAt: { type: Date, default: Date.now }
 });
 
