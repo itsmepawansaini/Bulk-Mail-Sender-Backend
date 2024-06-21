@@ -40,7 +40,7 @@ exports.getSender = async (req, res) => {
     const totalCount = await Sender.countDocuments(queryConditions);
 
     const senders = await Sender.find(queryConditions)
-      .sort({ sentAt: 1 })
+      .sort({ sentAt: -1 })
       .skip((page - 1) * count)
       .limit(count);
 
