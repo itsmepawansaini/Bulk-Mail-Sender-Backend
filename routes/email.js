@@ -7,4 +7,6 @@ router.post('/send', authMiddleware, emailController.sendEmail);
 
 router.get('/sent', authMiddleware, emailController.getSentEmails);
 
+router.get('/emails/:emailId', authMiddleware, emailController.getEmailById);
+
 module.exports = router;

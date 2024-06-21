@@ -6,12 +6,12 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_SERVER || "smtp-relay.brevo.com",
-  port: process.env.SMTP_PORT || 587,
+  host: process.env.SMTP_SERVER,
+  port: process.env.SMTP_PORT,
   secure: false,
   auth: {
-    user: process.env.EMAIL_ADDRESS || "709e7d001@smtp-brevo.com",
-    pass: process.env.EMAIL_PASSWORD || "dJLE2SImqO6rYc0R",
+    user: process.env.EMAIL_ADDRESS ,
+    pass: process.env.EMAIL_PASSWORD,
   },
 });
 
@@ -111,6 +111,21 @@ exports.getSentEmails = async (req, res) => {
   }
 };
 
+exports.getEmailById = async (req, res) => {
+  const { emailId } = req.params;
 
+  try {
+    const email = await Email.findById(emailId);
+
+    if (!email) {
+      return res.status(404).send('Email not found');
+    }
+
+    res.json(email);
+  } catch (error) {
+    console.error('Error Fetching Email by ID:', error.message);
+    res.status(500).send(`Error Fetching Email by ID: ${error.message}`);
+  }
+};
 
 
