@@ -90,12 +90,23 @@ exports.addRecipientGroup = async (req, res) => {
 exports.getAllGroups = async (req, res) => {
   try {
     const groups = await RecipientGroup.find().sort({ createdAt: -1 });
-    res.json(groups);
+    const groupsWithRecipientCount = await Promise.all(
+      groups.map(async (group) => {
+        const totalRecipients = await Recipient.countDocuments({ group: group._id });
+        return {
+          ...group.toObject(),
+          totalRecipients
+        };
+      })
+    );
+
+    res.json(groupsWithRecipientCount);
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
   }
 };
+
 
 exports.getRecipientsByGroupId = async (req, res) => {
   const { groupId } = req.params;
