@@ -9,4 +9,8 @@ router.get('/all', authMiddleware, senderController.getSender);
 
 router.delete('/delete/:id', authMiddleware, senderController.deleteSender);
 
+router.put('/update/:id', authMiddleware, senderController.updateSender);
+
+router.get('/details/:id', authMiddleware, senderController.getSenderById);
+
 module.exports = router;

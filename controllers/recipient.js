@@ -6,36 +6,59 @@ const Recipient = require("../models/Recipient");
 const RecipientGroup = require("../models/RecipientGroup");
 const mongoose = require("mongoose");
 
+// Add Recipient
 exports.addRecipient = async (req, res) => {
-  const { name, email, groupId } = req.body;
+  const { name, email, groups } = req.body;
+  console.log({ name, email, groups });
 
   try {
     let recipient = await Recipient.findOne({ email });
 
+    if (
+      !Array.isArray(groups) ||
+      !groups.every(mongoose.Types.ObjectId.isValid)
+    ) {
+      return res.status(400).json({ msg: "Invalid Group IDs" });
+    }
+
+    const validGroups = await RecipientGroup.find({ _id: { $in: groups } });
+
+    if (validGroups.length !== groups.length) {
+      return res.status(400).json({ msg: "One or More Groups Not Found" });
+    }
+
     if (recipient) {
-      return res.status(400).json({ msg: "Recipient Already Exists" });
+      const newGroups = groups.filter(
+        (groupId) => !recipient.groups.includes(groupId)
+      );
+
+      if (newGroups.length === 0) {
+        return res
+          .status(400)
+          .json({ msg: "Recipient Already in These Groups" });
+      }
+
+      recipient.groups.push(...newGroups);
+      await recipient.save();
+    } else {
+      recipient = new Recipient({
+        name,
+        email,
+        groups,
+      });
+
+      await recipient.save();
     }
 
-    let group = await RecipientGroup.findById(groupId);
-
-    if (!group) {
-      return res.status(400).json({ msg: "Group Not Found" });
-    }
-
-    await Recipient.create({
-      name,
-      email,
-      group: group._id,
-    });
-
-    res.send(`Recipient Added`);
+    res.send("Recipient Added");
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
   }
 };
 
-exports.getRecipient = async (req, res) => {
+//Get All Recipients
+exports.getRecipients = async (req, res) => {
   try {
     let { search, count, page } = req.query;
     count = parseInt(count) || 10;
@@ -52,7 +75,7 @@ exports.getRecipient = async (req, res) => {
     const totalCount = await Recipient.countDocuments(queryConditions);
 
     const recipients = await Recipient.find(queryConditions)
-      .populate("group", "name")
+      .populate("groups", "name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * count)
       .limit(count);
@@ -64,11 +87,53 @@ exports.getRecipient = async (req, res) => {
       recipients,
     });
   } catch (error) {
-    console.error("Error Fetching Recipient:", error.message);
-    res.status(500).send(`Error Fetching Recipient: ${error.message}`);
+    console.error("Error Fetching Recipients:", error.message);
+    res.status(500).send(`Error Fetching Recipients: ${error.message}`);
   }
 };
 
+//Update Recipient
+exports.updateRecipient = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, groups } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid Recipient ID" });
+  }
+
+  try {
+    if (
+      groups &&
+      (!Array.isArray(groups) || !groups.every(mongoose.Types.ObjectId.isValid))
+    ) {
+      return res.status(400).json({ message: "Invalid group IDs" });
+    }
+
+    const recipient = await Recipient.findById(id);
+
+    if (!recipient) {
+      return res.status(404).json({ message: "Recipient Not Found" });
+    }
+
+    recipient.name = name || recipient.name;
+    recipient.email = email || recipient.email;
+
+    if (groups) {
+      recipient.groups = groups;
+    }
+
+    recipient.updatedAt = Date.now();
+
+    await recipient.save();
+
+    res.json({ message: "Recipient Updated Successfully", recipient });
+  } catch (error) {
+    console.error("Error Updating Recipient:", error.message);
+    res.status(500).send(`Error Updating Recipient: ${error.message}`);
+  }
+};
+
+//Add Recipient Group
 exports.addRecipientGroup = async (req, res) => {
   const { name } = req.body;
 
@@ -88,6 +153,7 @@ exports.addRecipientGroup = async (req, res) => {
   }
 };
 
+//Get All Recipient Groups
 exports.getAllGroups = async (req, res) => {
   try {
     const groups = await RecipientGroup.find().sort({ createdAt: -1 });
@@ -110,6 +176,7 @@ exports.getAllGroups = async (req, res) => {
   }
 };
 
+//Get Recipients By Group Id
 exports.getRecipientsByGroupId = async (req, res) => {
   const { groupId } = req.params;
 
@@ -132,6 +199,7 @@ exports.getRecipientsByGroupId = async (req, res) => {
   }
 };
 
+//Upload Recipients Via CSV
 exports.uploadRecipients = async (req, res) => {
   const { groupId } = req.body;
 
@@ -182,6 +250,7 @@ exports.uploadRecipients = async (req, res) => {
   }
 };
 
+//Delete Recipient
 exports.deleteRecipient = async (req, res) => {
   const RecipientId = req.params.id;
   console.log(RecipientId.id);
@@ -201,6 +270,7 @@ exports.deleteRecipient = async (req, res) => {
   }
 };
 
+//Delete Recipient Group
 exports.deleteRecipientGroup = async (req, res) => {
   const recipientGroupId = req.params.id;
   console.log(recipientGroupId);
@@ -232,3 +302,37 @@ exports.deleteRecipientGroup = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Add Recipient To Group
+exports.addRecipientToGroup = async (req, res) => {
+  const { recipientId, groupId } = req.body;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(recipientId) || !mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ message: "Invalid Recipient ID or Group ID" });
+    }
+
+    const recipient = await Recipient.findById(recipientId);
+    if (!recipient) {
+      return res.status(404).json({ message: "Recipient not found" });
+    }
+
+    const group = await RecipientGroup.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Recipient Group not found" });
+    }
+
+    if (recipient.groups.includes(groupId)) {
+      return res.status(400).json({ message: "Recipient already in this group" });
+    }
+
+    recipient.groups.push(groupId);
+    await recipient.save();
+
+    res.json({ message: "Recipient added to group successfully", recipient });
+  } catch (error) {
+    console.error("Error adding recipient to group:", error.message);
+    res.status(500).send(`Server Error: ${error.message}`);
+  }
+};
+

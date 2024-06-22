@@ -6,9 +6,11 @@ const authMiddleware = require('../middleware/auth');
 
 router.post('/add', authMiddleware, recipientController.addRecipient);
 
-router.get('/all', authMiddleware, recipientController.getRecipient);
+router.get('/all', authMiddleware, recipientController.getRecipients);
 
 router.post('/group', authMiddleware, recipientController.addRecipientGroup);
+
+router.post('/addRecipientToGroup', authMiddleware, recipientController.addRecipientToGroup);
 
 router.get('/groups', authMiddleware,  recipientController.getAllGroups);
 
@@ -19,5 +21,7 @@ router.post('/upload', upload.single('file'), authMiddleware, recipientControlle
 router.delete('/delete/:id', authMiddleware, recipientController.deleteRecipient);
 
 router.delete('/groupdelete/:id', authMiddleware, recipientController.deleteRecipientGroup);
+
+router.put('/update/:id', authMiddleware, recipientController.updateRecipient);
 
 module.exports = router;
