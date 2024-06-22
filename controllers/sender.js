@@ -58,6 +58,28 @@ exports.getSender = async (req, res) => {
   }
 };
 
+// Get All Sender Without Pagination
+exports.exportSenders = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    const queryConditions = {};
+    if (search) {
+      queryConditions.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const senders = await Sender.find(queryConditions).sort({ sentAt: -1 });
+
+    res.json(senders);
+  } catch (error) {
+    console.error("Error Exporting Senders:", error.message);
+    res.status(500).send(`Error Exporting Senders: ${error.message}`);
+  }
+};
+
 //Get Sender Details
 exports.getSenderById = async (req, res) => {
   const senderId = req.params.id;

@@ -7,6 +7,8 @@ router.post('/add', authMiddleware, senderController.addSender);
 
 router.get('/all', authMiddleware, senderController.getSender);
 
+router.get('/export', authMiddleware, senderController.exportSenders);
+
 router.delete('/delete/:id', authMiddleware, senderController.deleteSender);
 
 router.put('/update/:id', authMiddleware, senderController.updateSender);
