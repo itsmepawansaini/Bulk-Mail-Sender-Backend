@@ -55,3 +55,22 @@ exports.getSender = async (req, res) => {
     res.status(500).send(`Error Fetching Sender: ${error.message}`);
   }
 };
+
+exports.deleteSender = async (req, res) => {
+  const senderId = req.params.id;
+  console.log(senderId.id);
+
+  try {
+    const sender = await Sender.findById(senderId);
+
+    if (!sender) {
+      return res.status(404).json({ message: "Sender Not Found" });
+    }
+
+    await Sender.deleteOne({ _id: senderId });
+
+    res.json({ message: "Sender Deleted Successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

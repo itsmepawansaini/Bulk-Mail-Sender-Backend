@@ -7,4 +7,6 @@ router.post('/add', authMiddleware, senderController.addSender);
 
 router.get('/all', authMiddleware, senderController.getSender);
 
+router.delete('/delete/:id', authMiddleware, senderController.deleteSender);
+
 module.exports = router;

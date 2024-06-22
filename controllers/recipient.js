@@ -1,9 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const csv = require('csv-parser');
+const fs = require("fs");
+const path = require("path");
+const csv = require("csv-parser");
 const nodemailer = require("nodemailer");
 const Recipient = require("../models/Recipient");
 const RecipientGroup = require("../models/RecipientGroup");
+const mongoose = require("mongoose");
 
 exports.addRecipient = async (req, res) => {
   const { name, email, groupId } = req.body;
@@ -24,7 +25,7 @@ exports.addRecipient = async (req, res) => {
     await Recipient.create({
       name,
       email,
-      group: group._id
+      group: group._id,
     });
 
     res.send(`Recipient Added`);
@@ -43,15 +44,15 @@ exports.getRecipient = async (req, res) => {
     const queryConditions = {};
     if (search) {
       queryConditions.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
     const totalCount = await Recipient.countDocuments(queryConditions);
 
     const recipients = await Recipient.find(queryConditions)
-      .populate('group', 'name') 
+      .populate("group", "name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * count)
       .limit(count);
@@ -60,7 +61,7 @@ exports.getRecipient = async (req, res) => {
       totalCount,
       currentPage: page,
       totalPages: Math.ceil(totalCount / count),
-      recipients
+      recipients,
     });
   } catch (error) {
     console.error("Error Fetching Recipient:", error.message);
@@ -92,10 +93,12 @@ exports.getAllGroups = async (req, res) => {
     const groups = await RecipientGroup.find().sort({ createdAt: -1 });
     const groupsWithRecipientCount = await Promise.all(
       groups.map(async (group) => {
-        const totalRecipients = await Recipient.countDocuments({ group: group._id });
+        const totalRecipients = await Recipient.countDocuments({
+          group: group._id,
+        });
         return {
           ...group.toObject(),
-          totalRecipients
+          totalRecipients,
         };
       })
     );
@@ -107,7 +110,6 @@ exports.getAllGroups = async (req, res) => {
   }
 };
 
-
 exports.getRecipientsByGroupId = async (req, res) => {
   const { groupId } = req.params;
 
@@ -118,7 +120,10 @@ exports.getRecipientsByGroupId = async (req, res) => {
       return res.status(404).json({ msg: "Group Not Found" });
     }
 
-    const recipients = await Recipient.find({ group: groupId }).populate('group', 'name');
+    const recipients = await Recipient.find({ group: groupId }).populate(
+      "group",
+      "name"
+    );
 
     res.json(recipients);
   } catch (err) {
@@ -145,10 +150,10 @@ exports.uploadRecipients = async (req, res) => {
 
     fs.createReadStream(req.file.path)
       .pipe(csv())
-      .on('data', (data) => {
+      .on("data", (data) => {
         results.push(data);
       })
-      .on('end', async () => {
+      .on("end", async () => {
         try {
           for (const row of results) {
             const { name, email } = row;
@@ -158,7 +163,7 @@ exports.uploadRecipients = async (req, res) => {
               await Recipient.create({
                 name,
                 email,
-                group: group._id
+                group: group._id,
               });
             }
           }
@@ -174,5 +179,56 @@ exports.uploadRecipients = async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
+  }
+};
+
+exports.deleteRecipient = async (req, res) => {
+  const RecipientId = req.params.id;
+  console.log(RecipientId.id);
+
+  try {
+    const recipient = await Recipient.findById(RecipientId);
+
+    if (!recipient) {
+      return res.status(404).json({ message: "Recipient Not Found" });
+    }
+
+    await Recipient.deleteOne({ _id: RecipientId });
+
+    res.json({ message: "Recipient Deleted Successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteRecipientGroup = async (req, res) => {
+  const recipientGroupId = req.params.id;
+  console.log(recipientGroupId);
+
+  if (!mongoose.Types.ObjectId.isValid(recipientGroupId)) {
+    return res.status(400).json({ message: "Invalid Recipient Group ID" });
+  }
+
+  try {
+    const recipientGroup = await RecipientGroup.findById(recipientGroupId);
+
+    if (!recipientGroup) {
+      return res.status(404).json({ message: "Recipient Group Not Found" });
+    }
+
+    const recipientCount = await Recipient.countDocuments({
+      group: recipientGroupId,
+    });
+
+    if (recipientCount > 0) {
+      return res.json({ message: "You Cannot Delete Group With Recipients" });
+    }
+
+    await RecipientGroup.deleteOne({ _id: recipientGroupId });
+
+    res.json({ message: "Recipient Group Deleted Successfully" });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ error: error.message });
   }
 };

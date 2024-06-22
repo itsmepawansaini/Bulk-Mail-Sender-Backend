@@ -114,8 +114,7 @@ exports.getSentEmails = async (req, res) => {
 
 exports.getEmailById = async (req, res) => {
   const { emailId } = req.params;
-  const { includeAttachments } = req.query; // Get the query parameter
-
+  const { includeAttachments } = req.query; 
   try {
     const email = await Email.findById(emailId);
 
@@ -124,10 +123,10 @@ exports.getEmailById = async (req, res) => {
     }
 
     if (includeAttachments === 'true') {
-      const emailWithAttachments = email.toObject(); // Convert to plain object
+      const emailWithAttachments = email.toObject();
       emailWithAttachments.attachments = email.attachments.map(att => ({
         ...att.toObject(),
-        content: att.content.toString('base64') // Convert buffer to base64 string
+        content: att.content.toString('base64') 
       }));
       return res.json(emailWithAttachments);
     }

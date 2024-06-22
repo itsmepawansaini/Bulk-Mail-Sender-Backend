@@ -16,4 +16,8 @@ router.get('/group/:groupId', authMiddleware, recipientController.getRecipientsB
 
 router.post('/upload', upload.single('file'), authMiddleware, recipientController.uploadRecipients);
 
+router.delete('/delete/:id', authMiddleware, recipientController.deleteRecipient);
+
+router.delete('/groupdelete/:id', authMiddleware, recipientController.deleteRecipientGroup);
+
 module.exports = router;
