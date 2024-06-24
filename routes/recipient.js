@@ -26,6 +26,8 @@ router.put('/update/:id', authMiddleware, recipientController.updateRecipient);
 
 router.put('/updategroup/:id', authMiddleware, recipientController.updateRecipientGroup);
 
-router.delete('/:groupId/remove-recipient/:recipientId', authMiddleware, recipientController.removeRecipientFromGroup);
+router.get('/export', authMiddleware, recipientController.exportRecipients);
+
+router.get('/exportgroups', authMiddleware, recipientController.exportRecipientGroups);
 
 module.exports = router;

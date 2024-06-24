@@ -395,35 +395,46 @@ exports.updateRecipientGroup = async (req, res) => {
   }
 };
 
-//Remove Recipient From Group
-exports.removeRecipientFromGroup = async (req, res) => {
-  const { groupId, recipientId } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(recipientId)) {
-    return res.status(400).json({ message: "Invalid Group ID or Recipient ID" });
-  }
-
+// Get All Recipients Without Pagination
+exports.exportRecipients = async (req, res) => {
   try {
-    const recipientGroup = await RecipientGroup.findById(groupId);
-    if (!recipientGroup) {
-      return res.status(404).json({ message: "Recipient Group not found" });
+    const { search } = req.query;
+
+    const queryConditions = {};
+    if (search) {
+      queryConditions.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
     }
 
-    const recipient = await Recipient.findById(recipientId);
-    if (!recipient) {
-      return res.status(404).json({ message: "Recipient not found" });
-    }
+    const recipients = await Recipient.find(queryConditions).sort({ sentAt: -1 });
 
-    if (!recipient.groups.includes(groupId)) {
-      return res.status(400).json({ message: "Recipient is not in this group" });
-    }
-
-    recipient.groups = recipient.groups.filter(group => group.toString() !== groupId);
-    await recipient.save();
-
-    res.json({ message: "Recipient removed from group successfully", recipient });
+    res.json(recipients);
   } catch (error) {
-    console.error("Error removing recipient from group:", error.message);
-    res.status(500).json({ error: "Server Error" });
+    console.error("Error Exporting Recipients:", error.message);
+    res.status(500).send(`Error Exporting Recipients: ${error.message}`);
+  }
+};
+
+// Get All Recipient Groups Without Pagination
+exports.exportRecipientGroups = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    const queryConditions = {};
+    if (search) {
+      queryConditions.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const groups = await RecipientGroup.find(queryConditions).sort({ sentAt: -1 });
+
+    res.json(groups);
+  } catch (error) {
+    console.error("Error Exporting Recipient Groups:", error.message);
+    res.status(500).send(`Error Exporting Recipients Groups: ${error.message}`);
   }
 };
