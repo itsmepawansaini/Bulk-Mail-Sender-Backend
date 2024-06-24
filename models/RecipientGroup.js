@@ -1,8 +1,16 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const RecipientGroupSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+const recipientGroupSchema = new Schema({
+  name: String,
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('RecipientGroup', RecipientGroupSchema);
+recipientGroupSchema.virtual('recipients', {
+  ref: 'Recipient',
+  localField: '_id',
+  foreignField: 'groups',
+  justOne: false,
+});
+
+module.exports = mongoose.model('RecipientGroup', recipientGroupSchema);
