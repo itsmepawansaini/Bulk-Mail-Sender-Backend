@@ -193,14 +193,18 @@ exports.getRecipientsByGroupId = async (req, res) => {
   const { groupId } = req.params;
 
   try {
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ msg: "Invalid Group ID" });
+    }
+
     const group = await RecipientGroup.findById(groupId);
 
     if (!group) {
       return res.status(404).json({ msg: "Group Not Found" });
     }
 
-    const recipients = await Recipient.find({ group: groupId }).populate(
-      "group",
+    const recipients = await Recipient.find({ groups: { $in: [groupId] } }).populate(
+      "groups",
       "name"
     );
 
@@ -210,6 +214,7 @@ exports.getRecipientsByGroupId = async (req, res) => {
     res.status(500).send("Server Error");
   }
 };
+
 
 //Upload Recipients Via CSV
 exports.uploadRecipients = async (req, res) => {
