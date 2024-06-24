@@ -1,9 +1,7 @@
 const nodemailer = require("nodemailer");
-const multer = require("multer");
 const Email = require("../models/Email");
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = require("../upload");
+const multer = require('multer'); 
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_SERVER,
@@ -41,14 +39,14 @@ exports.sendEmail = async (req, res) => {
         mailOptions.attachments = [
           {
             filename: req.file.originalname,
-            content: req.file.buffer,
+            path: req.file.path,
           },
         ];
       }
 
       await transporter.sendMail(mailOptions);
 
-      await Email.create({
+      const newEmail = new Email({
         fromName,
         fromId,
         to: recipientsArray,
@@ -60,11 +58,13 @@ exports.sendEmail = async (req, res) => {
                 filename: req.file.originalname,
                 contentType: req.file.mimetype,
                 sizeInBytes: req.file.size,
-                content: req.file.buffer,
+                path: req.file.path,
               },
             ]
           : [],
       });
+
+      await newEmail.save();
 
       console.log(
         `Email Sent Successfully to ${recipientsArray.length} recipients`
@@ -95,7 +95,7 @@ exports.getSentEmails = async (req, res) => {
     const totalCount = await Email.countDocuments(queryConditions);
 
     const emails = await Email.find(queryConditions)
-      .select('-attachments') // Exclude attachments from the query
+      .select("-attachments")
       .sort({ sentAt: -1 })
       .skip((page - 1) * count)
       .limit(count);
@@ -114,26 +114,26 @@ exports.getSentEmails = async (req, res) => {
 
 exports.getEmailById = async (req, res) => {
   const { emailId } = req.params;
-  const { includeAttachments } = req.query; 
+  const { includeAttachments } = req.query;
   try {
     const email = await Email.findById(emailId);
 
     if (!email) {
-      return res.status(404).send('Email Not Found');
+      return res.status(404).send("Email Not Found");
     }
 
-    if (includeAttachments === 'true') {
+    if (includeAttachments === "true") {
       const emailWithAttachments = email.toObject();
-      emailWithAttachments.attachments = email.attachments.map(att => ({
+      emailWithAttachments.attachments = email.attachments.map((att) => ({
         ...att.toObject(),
-        content: att.content.toString('base64') 
+        content: att.content.toString("base64"),
       }));
       return res.json(emailWithAttachments);
     }
 
     res.json(email);
   } catch (error) {
-    console.error('Error Fetching Email By ID:', error.message);
+    console.error("Error Fetching Email By ID:", error.message);
     res.status(500).send(`Error Fetching Email By ID: ${error.message}`);
   }
 };
