@@ -1,6 +1,6 @@
 const express = require("express");
 const connectDB = require("./config/db");
-// const cors = require("cors");
+const cors = require("cors");
 require("dotenv").config();
 const path = require("path");
 const fs = require("fs");
@@ -14,7 +14,7 @@ connectDB();
 app.use(express.json());
 
 // Enable CORS for all origins
-// app.use(cors());
+app.use(cors());
 
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
