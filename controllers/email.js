@@ -1,7 +1,7 @@
-const nodemailer = require("nodemailer");
-const Email = require("../models/Email");
-const upload = require("../upload");
-const multer = require('multer'); 
+const nodemailer = require('nodemailer');
+const multer = require('multer'); // Add this line to import multer
+const Email = require('../models/Email');
+const upload = require('../upload');  // Import the multer configuration
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_SERVER,
@@ -14,17 +14,17 @@ const transporter = nodemailer.createTransport({
 });
 
 exports.sendEmail = async (req, res) => {
-  upload.single("attachment")(req, res, async (err) => {
+  upload.single('attachment')(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
-      console.error("Multer error:", err);
+      console.error('Multer error:', err);
       return res.status(500).send(`Error uploading file: ${err.message}`);
     } else if (err) {
-      console.error("Error:", err);
+      console.error('Error:', err);
       return res.status(500).send(`Something went wrong: ${err.message}`);
     }
 
     const { fromName, fromId, replyto, to, subject, body } = req.body;
-    const recipientsArray = to.split(",").map((email) => email.trim());
+    const recipientsArray = to.split(',').map((email) => email.trim());
 
     try {
       let mailOptions = {
@@ -35,17 +35,20 @@ exports.sendEmail = async (req, res) => {
         replyTo: replyto,
       };
 
+      let fileUrl = null;
       if (req.file) {
         mailOptions.attachments = [
           {
             filename: req.file.originalname,
-            path: req.file.path,
+            path: req.file.path,  // Path to the uploaded file on the server
           },
         ];
+        fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
       }
 
       await transporter.sendMail(mailOptions);
 
+      // Save email details to MongoDB
       const newEmail = new Email({
         fromName,
         fromId,
@@ -58,7 +61,7 @@ exports.sendEmail = async (req, res) => {
                 filename: req.file.originalname,
                 contentType: req.file.mimetype,
                 sizeInBytes: req.file.size,
-                path: req.file.path,
+                path: req.file.path,  // Save the path of the file
               },
             ]
           : [],
@@ -66,12 +69,10 @@ exports.sendEmail = async (req, res) => {
 
       await newEmail.save();
 
-      console.log(
-        `Email Sent Successfully to ${recipientsArray.length} recipients`
-      );
-      res.status(200).send("Email sent successfully");
+      console.log(`Email Sent Successfully to ${recipientsArray.length} recipients`);
+      res.status(200).json({ message: 'Email sent successfully', fileUrl: fileUrl });
     } catch (error) {
-      console.error("Error Sending Email:", error.message);
+      console.error('Error Sending Email:', error.message);
       res.status(500).send(`Error Sending Email: ${error.message}`);
     }
   });
@@ -95,7 +96,7 @@ exports.getSentEmails = async (req, res) => {
     const totalCount = await Email.countDocuments(queryConditions);
 
     const emails = await Email.find(queryConditions)
-      .select("-attachments")
+      .select('-attachments') // Exclude attachments from the query
       .sort({ sentAt: -1 })
       .skip((page - 1) * count)
       .limit(count);
@@ -114,26 +115,27 @@ exports.getSentEmails = async (req, res) => {
 
 exports.getEmailById = async (req, res) => {
   const { emailId } = req.params;
-  const { includeAttachments } = req.query;
+  const { includeAttachments } = req.query; 
   try {
     const email = await Email.findById(emailId);
 
     if (!email) {
-      return res.status(404).send("Email Not Found");
+      return res.status(404).send('Email Not Found');
     }
 
-    if (includeAttachments === "true") {
+    if (includeAttachments === 'true') {
       const emailWithAttachments = email.toObject();
-      emailWithAttachments.attachments = email.attachments.map((att) => ({
+      emailWithAttachments.attachments = email.attachments.map(att => ({
         ...att.toObject(),
-        content: att.content.toString("base64"),
+        url: `${req.protocol}://${req.get('host')}/uploads/${att.filename}`,
+        content: att.content.toString('base64')
       }));
       return res.json(emailWithAttachments);
     }
 
     res.json(email);
   } catch (error) {
-    console.error("Error Fetching Email By ID:", error.message);
+    console.error('Error Fetching Email By ID:', error.message);
     res.status(500).send(`Error Fetching Email By ID: ${error.message}`);
   }
 };
