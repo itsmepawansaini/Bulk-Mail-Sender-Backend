@@ -11,7 +11,7 @@ const emailSchema = new Schema({
         filename: { type: String, required: true },
         contentType: { type: String },
         sizeInBytes: { type: Number },
-        content: { type: Buffer }
+        url: { type: String }
     }],
     sentAt: { type: Date, default: Date.now }
 });

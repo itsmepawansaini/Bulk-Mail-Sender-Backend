@@ -1,27 +1,19 @@
 const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
-require("dotenv").config();
 const path = require("path");
-const fs = require("fs");
+require("dotenv").config();
 
 const app = express();
 
-// Connect to database
 connectDB();
 
-// Middleware to parse JSON
 app.use(express.json());
-
-// Enable CORS for all origins
 app.use(cors());
 
 const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
+app.use("/uploads", express.static(uploadsDir));
 
-// Routes
 app.get("/", (req, res) => {
   res.send("This is The Backend Server");
 });
